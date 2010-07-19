@@ -154,4 +154,22 @@ public
     # GET /build/<project>/<repository>/<arch>/_builddepinfo
     api :get, "/build/#{@project}/#{@repo}/#{@arch}/_builddepinfo"
   end
+  
+  # retrieve .solv file
+  def solv
+    # GET /build/<project>/<repository>/<arch>/_repository?view=solv
+    api :get, "/build/#{@project}/#{@repo}/#{@arch}/_repository?view=solv"
+  end
+
+  # retrieve repository listing
+  def repo
+    # GET /build/<project>/<repository>/<arch>/_repository
+    api :get, "/build/#{@project}/#{@repo}/#{@arch}/_repository"
+  end
+  
+  # retrieve rpm
+  def rpm name
+    # GET /build/<project>/<repository>/<arch>/_repository/<name>
+    api :get, "/build/#{@project}/#{@repo}/#{@arch}/_repository/#{name}"
+  end
 end
