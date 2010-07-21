@@ -52,65 +52,42 @@ require 'getoptlong'
 require 'rdoc/usage'
 require 'buildservice'
 
-opts = GetoptLong.new(
-	 [ "--api",      "-A", GetoptLong::REQUIRED_ARGUMENT ],
-	 [ "--format",   "-f", GetoptLong::REQUIRED_ARGUMENT ],
-	 [ "--user",     "-u", GetoptLong::REQUIRED_ARGUMENT ],
-	 [ "--password", "-p", GetoptLong::REQUIRED_ARGUMENT ],
-	 [ "--debug",    "-d", GetoptLong::NO_ARGUMENT ],
-	 [ "--help",     "-h", GetoptLong::NO_ARGUMENT ],
-	 [ "--verbose",  "-v", GetoptLong::NO_ARGUMENT ]
-)
+  args = BuildService::DEFAULT_ARGS
+  args << [ "--format",   "-f", GetoptLong::REQUIRED_ARGUMENT ]
 
-format = nil
+  callback = lambda do |opt,arg|
+    case opt
+    when "--format": [:format, arg]
+    else
+      nil
+    end
+  end
+  res = BuildService.scanargs args, callback
+  RDoc::usage unless res
 
-user = password = api = nil
-opts.each do |opt,arg|
-  case opt
-  when "--api": api = arg
-  when "--user": user = arg
-  when "--format": format = arg
-  when "--password": password = arg
-  when "--debug": debug = true
-  when "--help": RDoc::usage
-  when "--verbose": verbose = true
-  else
-    $stderr.puts "Unrecognized option #{opt}"
+  format = res[:format]
+  prjname = ARGV.shift
+  res[:repo] = ARGV.shift
+  res[:arch] = ARGV.shift
+
+  project = begin
+    BuildService::Project.new prjname, res
+  rescue ArgumentError
+    $stderr.puts "No project given"
+    RDoc::usage
+  rescue SecurityError
+    $stderr.puts "Please provide username and password"
     RDoc::usage
   end
-end
-
-project = ARGV.shift
-repo = ARGV.shift
-arch = ARGV.shift
-
-obs = begin
-  BuildService.new project, :user => user, :password => password, :api => api, :repo => repo, :arch => arch
-rescue ArgumentError
-  $stderr.puts "No project given"
-  RDoc::usage
-rescue SecurityError
-  $stderr.puts "Please provide username and password"
-  RDoc::usage
-end
-
-# check access to OBS
-
-begin
-  resp = obs.api :get, "/"
-rescue Exception => e
-  $stderr.puts "Could not access obs server at #{obs.uri}: #{e}"
-  exit 1
-end
 
 begin
   # verify existance of project
 
-  obs.project_config
+  exit 1 unless project.exists?
 
   # get buildepinfo
 
-  xml = obs.builddepinfo
+  xml = project.builddepinfo
 
   unless xml.is_a? Nokogiri::XML::Document
     $stderr.puts "Unexpected output #{xml.class}"
@@ -131,7 +108,7 @@ begin
     to_tlp obs, packages, cycles
   else
     $stderr.puts "No output format given"
-    usage
+    RDoc::usage
   end
 rescue RuntimeError => e
   $stderr.puts e
