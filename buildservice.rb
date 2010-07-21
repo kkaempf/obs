@@ -9,8 +9,10 @@ module BuildService
 
   DEFAULT_ARGS = [
          [ "--api",      "-A", GetoptLong::REQUIRED_ARGUMENT ],
+         [ "--arch",     "-a", GetoptLong::REQUIRED_ARGUMENT ],
 	 [ "--user",     "-u", GetoptLong::REQUIRED_ARGUMENT ],
 	 [ "--password", "-p", GetoptLong::REQUIRED_ARGUMENT ],
+	 [ "--repo",     "-r", GetoptLong::REQUIRED_ARGUMENT ],
 	 [ "--debug",    "-d", GetoptLong::NO_ARGUMENT ],
 	 [ "--help",     "-h", GetoptLong::NO_ARGUMENT ],
 	 [ "--verbose",  "-v", GetoptLong::NO_ARGUMENT ]
@@ -22,9 +24,11 @@ module BuildService
     opts.each do |opt,arg|
       case opt
       when "--api": res[:api] = arg
+      when "--arch": res[:arch] = arg
       when "--user": res[:user] = arg
       when "--format": format = arg
       when "--password": res[:password] = arg
+      when "--repo": res[:repo] = arg
       when "--debug": res[:debug] = true
       when "--help": RDoc::usage
       when "--verbose": res[:verbose] = true
@@ -95,11 +99,19 @@ class Project
   #  - :user
   #  - :password
   #
-  def initialize(project, options)
-    raise ArgumentError.new if project.nil?
+  def initialize(project = nil, options = nil)
+    unless project
+      project = File.read(".osc/_project").chomp rescue nil
+    end
+    raise ArgumentError.new unless project
     
+    api = options[:api]
+    unless api
+      api = File.read(".osc/_apiurl").chomp rescue nil
+    end
+
     require 'uri'
-    @uri = URI.parse(options[:api] || "https://api.opensuse.org")
+    @uri = URI.parse(api || "https://api.opensuse.org")
     
     user = options[:user]
     password = options[:password]
@@ -123,6 +135,10 @@ class Project
     @http = Net::HTTP.new @uri.host, @uri.port
     @http.use_ssl = (@uri.scheme == "https")
     @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+  end
+  
+  def to_s
+    @name
   end
   
   def api action, url, limit=10
@@ -207,9 +223,9 @@ class Project
     api :get, "/source/#{@name}/_pattern"
   end
   
-  def builddepinfo
+  def builddepinfo name = nil
     # GET /build/<project>/<repository>/<arch>/_builddepinfo
-    api :get, "/build/#{@name}/#{@repo}/#{@arch}/_builddepinfo"
+    api :get, "/build/#{@name}/#{@repo}/#{@arch}/_builddepinfo" + (name ? "" : "?package=\"#{name}\"")
   end
   
   # retrieve .solv file
@@ -230,24 +246,51 @@ class Project
     api :get, "/build/#{@name}/#{@repo}/#{@arch}/_repository/#{name}"
   end
 
+  # enumerat packages in this project
+  def packages
+    # GET /source/<project>
+    xml = api :get, "/source/#{@name}"
+    xml.xpath("/directory/entry/@name").each do |name|
+      yield name
+    end
+  end
+
+
 end # class Project
 
 class Package
   
   attr_reader :project, :name
-  def initialize project, name
+  def initialize project = nil, name = nil
+    unless project
+      project = File.read(".osc/_project").chomp rescue nil
+      raise ArgumentError.new unless project
+      project = BuildService::Project.new project
+    end
     @project = project
+    unless name
+      name = File.read(".osc/_package").chomp rescue nil
+      raise ArgumentError.new unless package
+    end
     @name = name
   end
 
+  def to_s
+    @name
+  end
+  
   def buildinfo
     # GET /build/<project>/<repository>/<arch>/<package>/_buildinfo
     @project.api :get, "/build/#{@project.name}/#{@project.repo}/#{@project.arch}/#{@name}/_buildinfo"
   end
 
+  # enumerate source files of package
   def files
     # GET /source/<project>/<package>
-    @project.api :get, "/source/#{@project.name}/#{@name}"
+    xml = @project.api :get, "/source/#{@project.name}/#{@name}"
+    xml.xpath("/directory/entry/@name").each do |name|
+      yield
+    end
   end
 
   def file filename
@@ -255,6 +298,11 @@ class Package
     @project.api :get, "/source/#{@project.name}/#{@name}/#{filename}"
   end
 
+  def builddepinfo
+    # GET /build/<project>/<repository>/<arch>/_builddepinfo?package="package_name"
+    @project.builddepinfo @name
+  end
+  
 end # class Package
 
 end #Module BuildService

@@ -6,15 +6,12 @@
 #
 # == Usage
 #
-# obsdeps [-A <apiurl>] [-u <user>] [-p <password>] [-f format] <project> [ <repo> [ <arch> ] ]
+# obsdeps [-A <apiurl>] [-u <user>] [-p <password>] [-r <repo> ] [-a <arch> ] [-f format] <project>
 #
-# <project>:
-#   project name
-#
-# <repo>:
+# -r <repo>:
 #   repository name, defaults to 'standard'
 #
-# <arch>:
+# -a <arch>:
 #   architecture, defaults to 'i586'
 #
 # -A <api>, --api <api>:
@@ -38,6 +35,9 @@
 # -f <format>, --format <format>:
 #   output format, either 'tlp' or 'dot'
 #
+# <project>:
+#   project name
+#
 #
 # Note:
 # obsdeps tries to extract username and password either from ~/.oscrc
@@ -50,7 +50,7 @@
 require 'rubygems'
 require 'getoptlong'
 require 'rdoc/usage'
-require 'buildservice'
+require File.join(File.dirname(__FILE__), 'buildservice')
 
   args = BuildService::DEFAULT_ARGS
   args << [ "--format",   "-f", GetoptLong::REQUIRED_ARGUMENT ]
@@ -67,8 +67,6 @@ require 'buildservice'
 
   format = res[:format]
   prjname = ARGV.shift
-  res[:repo] = ARGV.shift
-  res[:arch] = ARGV.shift
 
   project = begin
     BuildService::Project.new prjname, res
