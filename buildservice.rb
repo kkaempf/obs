@@ -150,6 +150,11 @@ public
     api :get, "/source/#{@project}/_config"
   end
   
+  def buildinfo name
+    # GET /build/<project>/<repository>/<arch>/<package>/_buildinfo
+    api :get, "/build/#{@project}/#{@repo}/#{@arch}/#{name}/_buildinfo"
+  end
+
   def builddepinfo
     # GET /build/<project>/<repository>/<arch>/_builddepinfo
     api :get, "/build/#{@project}/#{@repo}/#{@arch}/_builddepinfo"
