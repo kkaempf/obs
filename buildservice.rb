@@ -3,7 +3,8 @@
 #
 # A collection of classes to access openSUSE build service
 #
-
+# See http://api.opensuse.org
+#
 
 module BuildService
 
@@ -167,24 +168,25 @@ class Project
       ct = resp['content-type'].split(';').first # split off ';charset ...'
 #      $stderr.puts "Received #{ct}"
       case ct
-      when "text/xml", "application/xml": xml = Nokogiri::XML(resp.body)
-      when "text/html": xml = Nokogiri::HTML(resp.body)
+      when "text/xml", "application/xml": result = Nokogiri::XML(resp.body)
+      when "text/html": result = Nokogiri::HTML(resp.body)
       when "text/plain": #puts "BODY: '#{resp.body}'"
+      when "application/octet-stream": result = resp.body
       else
 	$stderr.puts "Unknown content '#{ct}'"
       end
     end
 #    $stderr.puts "Parsed #{xml.class}"
     case resp
-    when Net::HTTPSuccess:      return xml
+    when Net::HTTPSuccess:      return result
     when Net::HTTPRedirection:  return api(action, resp['location'], limit-1)
     when Net::HTTPUnauthorized: raise "Wrong authorization"
     when Net::HTTPForbidden:    raise "Not allowed"
     else
       # FIXME: this must be easier with Nokogiri.
-      if xml
-	status = xml.xpath("/status/@code").first.text.to_i rescue nil
-	summary = xml.xpath("/status/summary").text rescue nil
+      if result
+	status = result.xpath("/status/@code").first.text.to_i rescue nil
+	summary = result.xpath("/status/summary").text rescue nil
 #	$stderr.puts "Status '#{status}', Summary '#{summary}'"
 	raise summary if summary
       else
@@ -207,7 +209,7 @@ class Project
     # verify existance of project
 
     begin
-      pattern
+      meta
     rescue Exception => e
       $stderr.puts "Could not access project #{@name}: #{e}"
       return false
@@ -217,6 +219,10 @@ class Project
 
   def config
     api :get, "/source/#{@name}/_config"
+  end
+  
+  def meta
+    api :get, "/source/#{@name}/_meta"
   end
   
   def pattern
@@ -235,7 +241,7 @@ class Project
   end
 
   # retrieve repository listing
-  def repo
+  def repository
     # GET /build/<project>/<repository>/<arch>/_repository
     api :get, "/build/#{@name}/#{@repo}/#{@arch}/_repository"
   end
