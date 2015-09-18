@@ -1,88 +1,14 @@
 #
-# buildservice.rb
+# project.rb
 #
 # A collection of classes to access openSUSE build service
 #
 # See http://api.opensuse.org
 #
 
-module BuildService
+require 'getoptlong'
 
-  DEFAULT_ARGS = [
-         [ "--api",      "-A", GetoptLong::REQUIRED_ARGUMENT ],
-         [ "--arch",     "-a", GetoptLong::REQUIRED_ARGUMENT ],
-	 [ "--user",     "-u", GetoptLong::REQUIRED_ARGUMENT ],
-	 [ "--password", "-p", GetoptLong::REQUIRED_ARGUMENT ],
-	 [ "--repo",     "-r", GetoptLong::REQUIRED_ARGUMENT ],
-	 [ "--debug",    "-d", GetoptLong::NO_ARGUMENT ],
-	 [ "--help",     "-h", GetoptLong::NO_ARGUMENT ],
-	 [ "--verbose",  "-v", GetoptLong::NO_ARGUMENT ]
-  ]
-
-  def self.scanargs args, callback = nil
-    res = {}
-    opts = GetoptLong.new( *args )
-    opts.each do |opt,arg|
-      case opt
-      when "--api": res[:api] = arg
-      when "--arch": res[:arch] = arg
-      when "--user": res[:user] = arg
-      when "--format": format = arg
-      when "--password": res[:password] = arg
-      when "--repo": res[:repo] = arg
-      when "--debug": res[:debug] = true
-      when "--help": RDoc::usage
-      when "--verbose": res[:verbose] = true
-      else
-	k,v = callback ? callback.call(opt, arg) : nil
-	if k
-	  res[k] = v
-	else
-	  $stderr.puts "Unrecognized option #{opt}"
-	  return nil
-	end
-      end
-    end
-
-    res
-  end
-  
-private
-
-  # extract [username, password] from ~/.oscrc
-  # return nil if not possible
-
-  def self.extract_oscrc uri
-    begin
-      require 'ini'
-      inifile = Ini.load(File.expand_path("~/.oscrc"), :comment => '#')
-      return nil unless inifile
-      section = inifile["#{uri.scheme}://#{uri.host}"]
-      return nil unless section
-      u = section["user"]
-      p = section["pass"]
-      return nil unless u and p
-      return [u,p]
-    rescue Exception => e
-      $stderr.puts "osrc failed with #{e}"
-      nil
-    end
-  end
-
-  # extract [username, password] from ~/.netrc
-  # return nil if not possible
-
-  def self.extract_netrc uri
-    begin
-      require 'net/netrc'
-      rc = Net::Netrc.locate(uri.host)
-      return [rc.login, rc.password]
-    rescue
-      nil
-    end
-  end
-
-public
+module Obs
 
 class Project
   require 'net/https'
@@ -91,7 +17,7 @@ class Project
   attr_reader :uri, :user, :password, :name, :repo, :arch
   
   #
-  # BuildService::Project.new name (String), options (Hash) 
+  # Obs::Project.new name (String), options (Hash) 
   #
   # option keys:
   #  - :api
@@ -146,12 +72,12 @@ class Project
     raise "http redirection too deep" if limit.zero?
     c = nil
     case action.to_sym
-    when :get:       c = Net::HTTP::Get
-    when :put:       c = Net::HTTP::Put
-    when :post:      c = Net::HTTP::Post
-    when :delete:    c = Net::HTTP::Delete
-    when :head:      c = Net::HTTP::Head
-    when :options:   c = Net::HTTP::Options
+    when :get then     c = Net::HTTP::Get
+    when :put then     c = Net::HTTP::Put
+    when :post then    c = Net::HTTP::Post
+    when :delete then  c = Net::HTTP::Delete
+    when :head then    c = Net::HTTP::Head
+    when :options then c = Net::HTTP::Options
     else
       raise "Unknown action #{action}"
     end
@@ -168,20 +94,24 @@ class Project
       ct = resp['content-type'].split(';').first # split off ';charset ...'
 #      $stderr.puts "Received #{ct}"
       case ct
-      when "text/xml", "application/xml": result = Nokogiri::XML(resp.body)
-      when "text/html": result = Nokogiri::HTML(resp.body)
-      when "text/plain": #puts "BODY: '#{resp.body}'"
-      when "application/octet-stream": result = resp.body
+      when "text/xml", "application/xml"
+        result = Nokogiri::XML(resp.body)
+      when "text/html"
+        result = Nokogiri::HTML(resp.body)
+      when "text/plain"
+        #puts "BODY: '#{resp.body}'"
+      when "application/octet-stream"
+        result = resp.body
       else
 	$stderr.puts "Unknown content '#{ct}'"
       end
     end
 #    $stderr.puts "Parsed #{xml.class}"
     case resp
-    when Net::HTTPSuccess:      return result
-    when Net::HTTPRedirection:  return api(action, resp['location'], limit-1)
-    when Net::HTTPUnauthorized: raise "Wrong authorization"
-    when Net::HTTPForbidden:    raise "Not allowed"
+    when Net::HTTPSuccess then      return result
+    when Net::HTTPRedirection then  return api(action, resp['location'], limit-1)
+    when Net::HTTPUnauthorized then raise "Wrong authorization"
+    when Net::HTTPForbidden then    raise "Not allowed"
     else
       # FIXME: this must be easier with Nokogiri.
       if result
@@ -264,51 +194,4 @@ class Project
 
 end # class Project
 
-class Package
-  
-  attr_reader :project, :name
-  def initialize project = nil, name = nil
-    unless project
-      project = File.read(".osc/_project").chomp rescue nil
-      raise ArgumentError.new unless project
-      project = BuildService::Project.new project
-    end
-    @project = project
-    unless name
-      name = File.read(".osc/_package").chomp rescue nil
-      raise ArgumentError.new unless package
-    end
-    @name = name
-  end
-
-  def to_s
-    @name
-  end
-  
-  def buildinfo
-    # GET /build/<project>/<repository>/<arch>/<package>/_buildinfo
-    @project.api :get, "/build/#{@project.name}/#{@project.repo}/#{@project.arch}/#{@name}/_buildinfo"
-  end
-
-  # enumerate source files of package
-  def files
-    # GET /source/<project>/<package>
-    xml = @project.api :get, "/source/#{@project.name}/#{@name}"
-    xml.xpath("/directory/entry/@name").each do |name|
-      yield
-    end
-  end
-
-  def file filename
-    # GET /source/<project>/<package>/<filename>
-    @project.api :get, "/source/#{@project.name}/#{@name}/#{filename}"
-  end
-
-  def builddepinfo
-    # GET /build/<project>/<repository>/<arch>/_builddepinfo?package="package_name"
-    @project.builddepinfo @name
-  end
-  
-end # class Package
-
-end #Module BuildService
+end #Module Obs
