@@ -11,7 +11,7 @@
 require 'rubygems'
 
 module Obs
-  VERSION = "0.2.0"
+  VERSION = "0.3.0"
   require "obs/obs"
   require "obs/api"
   require "obs/package"
