@@ -28,7 +28,7 @@ loop do
   when "-v"
     verbose = true
   when "-n"
-    name = true
+    name = ARGV.shift
   when "-a"
     api = ARGV.shift
   else
@@ -36,6 +36,26 @@ loop do
   end
 end
 
-all = Obs::Product.all project, :api => api, :verbose => verbose
+# non-verbose
+#   <product name="SUSE-Manager-Server" cpe="cpe:/o:suse:suse-manager-server:2.1" originproject="SUSE:SLE-11-SP3:Update:Products:Test:Update" mtime="1436182970"/>
 
-puts all
+# verbose
+# <product name="SUSE-Manager-Server" originproject="SUSE:SLE-11-SP3:Update:Products:Test:Update">
+#  <cpe>cpe:/o:suse:suse-manager-server:2.1</cpe>
+#  <version>2.1</version>
+#  <patchlevel>0</patchlevel>
+# </product>
+      
+xml = Obs::Product.all project, :api => api, :verbose => verbose
+
+unless name
+  puts xml
+else
+  matches = xml.xpath(".//product[@name='#{name}']")
+  usage "Can't find product #{name}" unless matches
+  matches.each do |prodxml|
+    origin = prodxml['originproject']
+    product = Obs::Product.new origin, name, :api => api
+    puts product.definition
+  end
+end

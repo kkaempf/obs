@@ -10,7 +10,7 @@ module Obs
 
 class Product
   
-  attr_reader :uri, :user, :password, :name
+  attr_reader :uri, :user, :password, :name, :origin
   
   #
   # Obs::Project.new project (String), options (Hash) 
@@ -22,16 +22,18 @@ class Product
   #  - :user
   #  - :password
   #
-  def initialize(project = nil, options = nil)
-    raise ArgumentError.new("Project missing") unless project
+  def initialize(origin, name, options = nil)
+    raise ArgumentError.new("Origin project missing") unless origin
+    raise ArgumentError.new("Product name missing") unless name
 
     @api = Obs::Api.new(options)
-    @name = project
+    @origin = origin
+    @name = name
 
   end
   
   def to_s
-    @name
+    "#{origin}:#{@name}"
   end
 
   #
@@ -41,7 +43,7 @@ class Product
   #
   def self.all project, options = {}
     api = Obs::Api.new(options)
-    view = options[:verbose] ? "verboseproductlist" : "productlist"
+    view = (options[:verbose]) ? "verboseproductlist" : "productlist"
     api.get "/source/#{project}?view=#{view}&expand=1"
   end
 
@@ -57,6 +59,11 @@ class Product
     # verify existance of project
 
     true
+  end
+
+  # retrieve product definition
+  def definition
+    @api.get "/source/#{origin}/_product/#{name}.product"
   end
 
 end # class Product
