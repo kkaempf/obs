@@ -56,8 +56,8 @@ private
 
   def self.extract_oscrc uri
     begin
-      require 'ini'
-      inifile = Ini.load(File.expand_path("~/.oscrc"), :comment => '#')
+      require 'inifile'
+      inifile = IniFile.load(File.expand_path("~/.oscrc"), :comment => '#')
       return nil unless inifile
       section = inifile["#{uri.scheme}://#{uri.host}"]
       return nil unless section

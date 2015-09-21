@@ -15,6 +15,8 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = ">= 1.3.6"
   s.add_development_dependency("yard", [">= 0.5"])
+  s.add_dependency("net-netrc")
+  s.add_dependency("inifile")
 
   s.files         = `git ls-files`.split("\n")
   s.files.reject! { |fn| fn == '.gitignore' }
