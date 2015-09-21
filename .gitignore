@@ -1,5 +1,6 @@
 *~
 core
+pkg
 *.png
 *.dot
 *.tlp
