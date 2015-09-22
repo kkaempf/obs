@@ -45,7 +45,7 @@ class Definition
     @xml
   end
   def to_s
-    "#{@vendor};#{@name};#{@version};#{@patchlevel} : #{summary}"
+    "#{@vendor};#{@name};#{@version};#{@patchlevel} : #{@summary}"
   end
 
   # keys to access .product file
