@@ -11,12 +11,13 @@
 require 'rubygems'
 
 module Obs
-  VERSION = "0.3.0"
+  VERSION = "0.4.0"
   require "obs/obs"
   require "obs/api"
   require "obs/package"
   require "obs/project"
   require "obs/product"
+  require "obs/definition"
   @@debug = nil
   def Obs.debug
     @@debug

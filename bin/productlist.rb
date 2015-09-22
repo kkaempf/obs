@@ -20,6 +20,7 @@ usage "No project given" unless project
 api = "https://api.suse.de"
 verbose = nil
 name = nil
+as_xml = nil
 
 loop do
   break if ARGV.empty?
@@ -27,6 +28,8 @@ loop do
   case arg
   when "-v"
     verbose = true
+  when "-x"
+    as_xml = true
   when "-n"
     name = ARGV.shift
   when "-a"
@@ -56,6 +59,10 @@ else
   matches.each do |prodxml|
     origin = prodxml['originproject']
     product = Obs::Product.new origin, name, :api => api
-    puts product.definition
+    if as_xml
+      puts product.definition.to_xml
+    else
+      puts product.definition
+    end
   end
 end

@@ -10,7 +10,7 @@ module Obs
 
 class Product
   
-  attr_reader :uri, :user, :password, :name, :origin
+  attr_reader :api, :uri, :user, :password, :name, :origin
   
   #
   # Obs::Project.new project (String), options (Hash) 
@@ -63,7 +63,7 @@ class Product
 
   # retrieve product definition
   def definition
-    @api.get "/source/#{origin}/_product/#{name}.product"
+    Obs::Definition.new(self)    
   end
 
 end # class Product
