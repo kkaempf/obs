@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 #
 # get list of products defined in project
 #
