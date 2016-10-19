@@ -9,15 +9,16 @@ Gem::Specification.new do |s|
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Klaus Kämpf"]
   s.email       = ["kkaempf@suse.de"]
+  s.license     = "BSD-3-Clause"
   s.homepage    = "http://www.github.com/kkaempf/obs"
   s.summary = "Acces Open Build Service API"
   s.description = "OBS makes it easy to access the Open Build Service API"
 
   s.required_rubygems_version = ">= 1.3.6"
-  s.add_development_dependency("yard", [">= 0.5"])
-  s.add_dependency("nokogiri")
-  s.add_dependency("net-netrc")
-  s.add_dependency("inifile")
+  s.add_development_dependency("yard", ["~> 0.5"])
+  s.add_dependency("nokogiri", ["~> 0"])
+  s.add_dependency("net-netrc", ["~> 0"])
+  s.add_dependency("inifile", ["~> 0"])
 
   s.files         = `git ls-files`.split("\n")
   s.files.reject! { |fn| fn == '.gitignore' }
